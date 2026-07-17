@@ -74,6 +74,56 @@ export async function getRecommendations(req: AuthRequest, res: Response) {
   }
 }
 
+export async function chatWithAI(req: AuthRequest, res: Response) {
+  try {
+    const { message, history } = req.body;
+    if (!message) {
+      return res.status(400).json({ message: 'Message is required' });
+    }
+
+    const user = req.user;
+    const fullUser = user ? await User.findById(user._id).lean() : null;
+
+    const result = await generateContent('chat', {
+      message,
+      history: history || [],
+      userName: fullUser?.name || 'User',
+      userRole: fullUser?.role || 'user',
+      skills: fullUser?.skillsInterested || [],
+      goals: fullUser?.goals || [],
+    }, 'medium');
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: 'Chat failed' });
+  }
+}
+
+export async function analyzeDocument(req: AuthRequest, res: Response) {
+  try {
+    const { content, fileName, fileType } = req.body;
+    if (!content) {
+      return res.status(400).json({ message: 'Document content is required' });
+    }
+
+    const result = await generateContent('analyze-document', {
+      content,
+      fileName: fileName || 'document',
+      fileType: fileType || 'text',
+    }, 'medium');
+
+    await AIEvent.create({
+      userId: req.user?._id,
+      type: 'document_analysis',
+      payload: { fileName, fileType },
+    });
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: 'Document analysis failed' });
+  }
+}
+
 export async function trackEvent(req: AuthRequest, res: Response) {
   try {
     const { type, payload } = req.body;
