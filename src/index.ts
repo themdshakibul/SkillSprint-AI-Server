@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import authRoutes from './routes/auth';
+import serviceRoutes from './routes/services';
 
 dotenv.config();
 
@@ -15,6 +17,9 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
+
+app.use('/api/auth', authRoutes);
+app.use('/api/services', serviceRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
