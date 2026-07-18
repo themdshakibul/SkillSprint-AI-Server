@@ -5,19 +5,28 @@ import { generateToken } from '../utils/jwt';
 import { AuthRequest } from '../middleware/auth';
 
 function sendToken(res: Response, userId: string, statusCode = 200) {
-  const token = generateToken(userId);
-  res.cookie('token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
-  res.status(statusCode).json({ token });
+  try {
+    const token = generateToken(userId);
+    if (!token) {
+      console.error('sendToken: generateToken returned null/empty for userId:', userId);
+      return res.status(500).json({ message: 'Token generation failed' });
+    }
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    return res.status(statusCode).json({ token });
+  } catch (err) {
+    console.error('sendToken error:', err);
+    return res.status(500).json({ message: 'Auth failed' });
+  }
 }
 
 export async function register(req: AuthRequest, res: Response) {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'All fields are required' });
@@ -28,11 +37,15 @@ export async function register(req: AuthRequest, res: Response) {
       return res.status(400).json({ message: 'Email already registered' });
     }
 
+    const validRoles = ['buyer', 'mentor', 'admin'];
+    const assignedRole = role && validRoles.includes(role) ? role : 'buyer';
+
     const hashed = await bcrypt.hash(password, 12);
-    const user = await User.create({ name, email, password: hashed });
+    const user = await User.create({ name, email, password: hashed, role: assignedRole });
 
     sendToken(res, user._id.toString(), 201);
   } catch (err) {
+    console.error('auth/register error:', err);
     res.status(500).json({ message: 'Registration failed' });
   }
 }
@@ -57,6 +70,7 @@ export async function login(req: AuthRequest, res: Response) {
 
     sendToken(res, user._id.toString());
   } catch (err) {
+    console.error('auth/login error:', err);
     res.status(500).json({ message: 'Login failed' });
   }
 }
@@ -78,6 +92,7 @@ export async function demoLogin(req: AuthRequest, res: Response) {
 
     sendToken(res, user._id.toString());
   } catch (err) {
+    console.error('auth/demo error:', err);
     res.status(500).json({ message: 'Demo login failed' });
   }
 }
@@ -102,6 +117,7 @@ export async function googleLogin(req: AuthRequest, res: Response) {
 
     sendToken(res, user._id.toString());
   } catch (err) {
+    console.error('auth/google error:', err);
     res.status(500).json({ message: 'Google login failed' });
   }
 }

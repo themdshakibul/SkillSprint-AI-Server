@@ -4,6 +4,14 @@ import { generateContent } from '../services/aiService';
 import AIEvent from '../models/AIEvent';
 import Service from '../models/Service';
 import User from '../models/User';
+import multer from 'multer';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+export { upload };
 
 export async function generateServiceContent(req: AuthRequest, res: Response) {
   try {
@@ -22,7 +30,8 @@ export async function generateServiceContent(req: AuthRequest, res: Response) {
 
     res.json(result);
   } catch (err) {
-    res.status(500).json({ message: 'AI generation failed' });
+    console.error('AI generate error:', err);
+    res.status(500).json({ message: 'AI generation failed', error: String(err) });
   }
 }
 
@@ -95,7 +104,8 @@ export async function chatWithAI(req: AuthRequest, res: Response) {
 
     res.json(result);
   } catch (err) {
-    res.status(500).json({ message: 'Chat failed' });
+    console.error('Chat error:', err);
+    res.status(500).json({ message: 'Chat failed', error: String(err) });
   }
 }
 
@@ -110,6 +120,35 @@ export async function analyzeDocument(req: AuthRequest, res: Response) {
       content,
       fileName: fileName || 'document',
       fileType: fileType || 'text',
+    }, 'medium');
+
+    await AIEvent.create({
+      userId: req.user?._id,
+      type: 'document_analysis',
+      payload: { fileName, fileType },
+    });
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: 'Document analysis failed' });
+  }
+}
+
+export async function analyzeUploadedDocument(req: AuthRequest, res: Response) {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const content = file.buffer.toString('utf-8');
+    const fileName = file.originalname;
+    const fileType = file.mimetype;
+
+    const result = await generateContent('analyze-document', {
+      content,
+      fileName,
+      fileType,
     }, 'medium');
 
     await AIEvent.create({

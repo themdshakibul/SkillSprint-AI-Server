@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import Service from '../models/Service';
 import Review from '../models/Review';
+import Order from '../models/Order';
 import { AuthRequest } from '../middleware/auth';
 
 export async function getServices(req: AuthRequest, res: Response) {
@@ -53,6 +54,26 @@ export async function getServices(req: AuthRequest, res: Response) {
     });
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch services' });
+  }
+}
+
+export async function getMyServices(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    const services = await Service.find({ mentorId: req.user._id })
+      .populate('mentorId', 'name avatar')
+      .sort('-createdAt');
+
+    res.json({
+      data: services,
+      total: services.length,
+      page: 1,
+      totalPages: 1,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch your services' });
   }
 }
 
@@ -126,6 +147,54 @@ export async function deleteService(req: AuthRequest, res: Response) {
     res.json({ message: 'Service deleted' });
   } catch (err) {
     res.status(500).json({ message: 'Failed to delete service' });
+  }
+}
+
+export async function getMyStats(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const servicesCount = await Service.countDocuments({ mentorId: req.user._id });
+    const myServiceIds = (await Service.find({ mentorId: req.user._id }).select('_id')).map(s => s._id);
+    const ordersCount = await Order.countDocuments({ serviceId: { $in: myServiceIds } });
+    const completedOrders = await Order.find({ serviceId: { $in: myServiceIds }, status: 'completed' }).populate('serviceId', 'price');
+    const revenue = completedOrders.reduce((sum, o) => sum + ((o.serviceId as any)?.price || 0), 0);
+
+    res.json({
+      servicesCount,
+      ordersCount,
+      revenue,
+      role: req.user.role,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch stats' });
+  }
+}
+
+export async function getMyAnalytics(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const servicesCount = await Service.countDocuments({ mentorId: req.user._id });
+    const myServiceIds = (await Service.find({ mentorId: req.user._id }).select('_id')).map(s => s._id);
+    const orders = await Order.find({ serviceId: { $in: myServiceIds } }).populate('serviceId', 'price');
+    const bookings = orders.length;
+    const completedOrders = orders.filter(o => o.status === 'completed');
+    const revenue = completedOrders.reduce((sum, o) => sum + ((o.serviceId as any)?.price || 0), 0);
+
+    res.json({
+      totalViews: bookings,
+      bookings,
+      revenue,
+      servicesCount,
+      ordersCount: bookings,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch analytics' });
   }
 }
 
