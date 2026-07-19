@@ -2,6 +2,7 @@
   "version": 2,
   "framework": null,
   "installCommand": "npm install",
+  "buildCommand": null,
   "functions": {
     "api/server.ts": {
       "runtime": "@vercel/node@5.8.26"
