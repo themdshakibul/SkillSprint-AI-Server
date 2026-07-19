@@ -7,8 +7,7 @@
     "build": "tsc",
     "vercel-build": "npm run build",
     "start": "node dist/index.js",
-    "seed": "tsx src/seed.ts",
-    "vercel-build": "echo 'no build needed'"
+    "seed": "tsx src/seed.ts"
   },
   "keywords": [],
   "author": "",
