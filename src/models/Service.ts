@@ -13,6 +13,7 @@ export interface IService extends Document {
   images: string[];
   mentorId: mongoose.Types.ObjectId;
   tags: string[];
+  approved: boolean;
   createdAt: Date;
 }
 
@@ -29,6 +30,7 @@ const serviceSchema = new Schema<IService>({
   images: [{ type: String }],
   mentorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   tags: [{ type: String }],
+  approved: { type: Boolean, default: false },
 }, { timestamps: true });
 
 serviceSchema.index({ title: 'text', tags: 'text', shortDesc: 'text' });

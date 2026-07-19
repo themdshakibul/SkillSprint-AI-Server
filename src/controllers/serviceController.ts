@@ -15,7 +15,7 @@ export async function getServices(req: AuthRequest, res: Response) {
     const minRating = parseFloat(req.query.minRating as string);
     const sort = (req.query.sort as string) || '-createdAt';
 
-    const filter: any = {};
+    const filter: any = { approved: true };
 
     if (search) {
       filter.$or = [
@@ -94,6 +94,7 @@ export async function getService(req: AuthRequest, res: Response) {
     const related = await Service.find({
       category: service.category,
       _id: { $ne: service._id },
+      approved: true,
     })
       .populate('mentorId', 'name avatar')
       .limit(4);
@@ -200,7 +201,7 @@ export async function getMyAnalytics(req: AuthRequest, res: Response) {
 
 export async function getCategories(_req: AuthRequest, res: Response) {
   try {
-    const categories = await Service.distinct('category');
+    const categories = await Service.distinct('category', { approved: true });
     res.json(categories);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch categories' });
